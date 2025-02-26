@@ -7,6 +7,7 @@ import (
 	"gain-v2/helper"
 	email "gain-v2/helper/email"
 	encrypt "gain-v2/helper/encrypt"
+	middlewareGain "gain-v2/middleware"
 	"gain-v2/routes"
 	"gain-v2/utils/database"
 	"net/http"
@@ -34,22 +35,22 @@ func main() {
 	ctx := context.Background()
 
 	// Initialize PostgreSQL database connection
-	db, err := database.InitDBPostgres(*config)
-	if err != nil {
-		e.Logger.Fatal("Database initialization failed: ", err.Error())
-	}
+	db, _ := database.InitDBPostgres(*config)
+	// if err != nil {
+	// e.Logger.Fatal("Database initialization failed: ", err.Error())
+	// }
 
 	// Initialize Redis database connection
 	redis, _ := database.InitRedis(*config)
-	if err != nil {
-		e.Logger.Fatal("Redis initialization failed: ", err.Error())
-	}
+	// if err != nil {
+	// 	e.Logger.Fatal("Redis initialization failed: ", err.Error())
+	// }
 
 	// Initialize Elasticsearch database connection
 	elastic, _ := database.InitElasticSearch(*config)
-	if err != nil {
-		e.Logger.Fatal("Elasticsearch initialization failed: ", err.Error())
-	}
+	// if err != nil {
+	// 	e.Logger.Fatal("Elasticsearch initialization failed: ", err.Error())
+	// }
 
 	e.IPExtractor = echo.ExtractIPFromRealIPHeader()
 
@@ -68,10 +69,12 @@ func main() {
 	userController := handlerUser.NewHandler(userServices, jwtInterface)
 	loggingController := handlerLogging.NewHandler(loggingServices, jwtInterface)
 
+	midGain := middlewareGain.NewMiddleware(jwtInterface, userServices, *config)
+
 	// Set up API routes
 	group := e.Group("/api/v1")
 
-	routes.RouteUser(group, userController, *config)
+	routes.RouteUser(group, userController, *config, midGain)
 	routes.RouteLogging(group, loggingController, *config)
 
 	// Handle "not found" errors for specific endpoints
@@ -89,11 +92,9 @@ func main() {
 
 	// Configure middleware
 	e.Pre(middleware.RemoveTrailingSlash())
-	e.Use(middleware.CORS())
-	e.Use(middleware.LoggerWithConfig(
-		middleware.LoggerConfig{
-			Format: "method=${method}, uri=${uri}, status=${status}, time=${time_rfc3339}\n",
-		}))
+	e.Use(middleware.RateLimiterWithConfig(middlewareGain.GainRateLimitConfig()))
+	e.Use(middlewareGain.GainCORSSetting())
+	e.Use(middlewareGain.GainLoggerSetting())
 
 	// Debug logging for database connections
 	e.Logger.Debug(db)

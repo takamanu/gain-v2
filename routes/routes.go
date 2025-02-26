@@ -2,6 +2,9 @@ package routes
 
 import (
 	"gain-v2/configs"
+	"gain-v2/middleware"
+	"net/http"
+
 	// "gain-v2/features/fashions"
 
 	"gain-v2/features/logging"
@@ -9,11 +12,16 @@ import (
 
 	// "gain-v2/features/vouchers"
 
-	echojwt "github.com/labstack/echo-jwt"
 	"github.com/labstack/echo/v4"
 )
 
-func RouteUser(e *echo.Group, uh users.UserHandlerInterface, cfg configs.ProgrammingConfig) {
+func RouteUser(e *echo.Group, uh users.UserHandlerInterface, cfg configs.ProgrammingConfig, mdl middleware.ScopesMiddlewareInterface) {
+	e.POST("/test-mw", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"status": "success",
+		})
+	}, mdl.GainSpecialMiddleware())
+
 	e.POST("/admin/add-user", uh.AddUser())
 	e.POST("/admin/login", uh.LoginAdmin())
 
@@ -25,8 +33,8 @@ func RouteUser(e *echo.Group, uh users.UserHandlerInterface, cfg configs.Program
 	// e.POST("/forget-password/verify", uh.ForgetPasswordVerify())
 	e.POST("/reset-password", uh.ResetPassword())
 	// e.POST("/refresh-token", uh.RefreshToken(), echojwt.JWT([]byte(cfg.Secret)))
-	e.PUT("/admin/update", uh.UpdateProfile(), echojwt.JWT([]byte(cfg.Secret)))
-	e.GET("/user/profile", uh.GetProfile(), echojwt.JWT([]byte(cfg.Secret)))
+	e.PUT("/admin/update", uh.UpdateProfile())
+	e.GET("/user/profile", uh.GetProfile())
 }
 
 func RouteLogging(e *echo.Group, lh logging.LoggingHandlerInterface, cfg configs.ProgrammingConfig) {
