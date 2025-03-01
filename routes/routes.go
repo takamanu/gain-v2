@@ -8,6 +8,7 @@ import (
 	// "gain-v2/features/fashions"
 
 	"gain-v2/features/logging"
+	"gain-v2/features/upload_csv"
 	"gain-v2/features/users"
 
 	// "gain-v2/features/vouchers"
@@ -35,6 +36,12 @@ func RouteUser(e *echo.Group, uh users.UserHandlerInterface, cfg configs.Program
 	// e.POST("/refresh-token", uh.RefreshToken(), echojwt.JWT([]byte(cfg.Secret)))
 	e.PUT("/admin/update", uh.UpdateProfile())
 	e.GET("/user/profile", uh.GetProfile())
+}
+
+func RouteUploadCSV(e *echo.Group, ucsv upload_csv.UploadCSVHandlerInterface, cfg configs.ProgrammingConfig, mdl middleware.ScopesMiddlewareInterface) {
+	e.POST("/ucsv/create-token-api", ucsv.CreateToken(), mdl.GainSpecialMiddleware())
+	e.POST("/ucsv/upload-data", ucsv.UploadCSV())
+
 }
 
 func RouteLogging(e *echo.Group, lh logging.LoggingHandlerInterface, cfg configs.ProgrammingConfig) {

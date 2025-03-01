@@ -39,6 +39,10 @@ func NewMiddleware(jwt helper.JWTInterface, us users.UserServiceInterface, cfg c
 	}
 }
 
+const (
+	SecretKey = "secrettest" // Replace with your actual secret key
+)
+
 // var IsLoggedInUser = echojwt.WithConfig(echojwt.Config{SigningKey: sm.getSecretKey()})
 
 func hasPermission(scopes, permissions []string) bool {
@@ -156,10 +160,6 @@ func (sm *ScopesMiddleWare) GetTokenData() echo.MiddlewareFunc {
 	}
 }
 
-const (
-	SecretKey = "secrettest" // Replace with your actual secret key
-)
-
 func generateSignature(clientID, requestID, requestTimestamp, requestTarget, digest string) string {
 	// Create the signature string
 	signatureString := fmt.Sprintf(
@@ -196,16 +196,26 @@ func (sm *ScopesMiddleWare) GainSpecialMiddleware() echo.MiddlewareFunc {
 
 			body, _ := io.ReadAll(c.Request().Body)
 
+			// Restore the request body for future reads
 			c.Request().Body = io.NopCloser(bytes.NewBuffer(body))
+
+			fmt.Println("Raw Body:", string(body))
+
+			// If body is empty or null, set it to "{}"
 
 			var jsonBody map[string]interface{}
 			if err := json.Unmarshal(body, &jsonBody); err != nil {
-				return c.JSON(http.StatusBadRequest, helper.FormatResponse(false, "err: inavlid req body", nil))
+				return c.JSON(http.StatusBadRequest, helper.FormatResponse(false, "err: invalid req body", nil))
 			}
+
+			// Re-marshal to ensure consistent JSON formatting
 			normalizedBody, _ := json.Marshal(jsonBody)
 
+			// Generate SHA-256 hash and Base64 encode it
 			hash := sha256.Sum256(normalizedBody)
 			digest := base64.StdEncoding.EncodeToString(hash[:])
+
+			fmt.Println("Digest:", digest)
 
 			// Generate expected signature
 			expectedSignature := generateSignature(clientID, requestID, requestTimestamp, reqTarget, digest)

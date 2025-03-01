@@ -19,6 +19,10 @@ import (
 	handlerUser "gain-v2/features/users/handler"
 	serviceUser "gain-v2/features/users/service"
 
+	dataUploadCSV "gain-v2/features/upload_csv/data"
+	handlerUploadCSV "gain-v2/features/upload_csv/handler"
+	serviceUploadCSV "gain-v2/features/upload_csv/service"
+
 	dataLogging "gain-v2/features/logging/data"
 	handlerLogging "gain-v2/features/logging/handler"
 	serviceLogging "gain-v2/features/logging/service"
@@ -62,11 +66,14 @@ func main() {
 	// Initialize feature instances
 	userModel := dataUser.NewData(db, redis, ctx)
 	loggingModel := dataLogging.NewData(redis, elastic)
+	uploadCSVModel := dataUploadCSV.NewData(redis, db, ctx)
 
 	userServices := serviceUser.NewService(userModel, jwtInterface, emailHelper, encryptHelper)
 	loggingServices := serviceLogging.NewService(loggingModel)
+	uploadCSVServices := serviceUploadCSV.NewService(uploadCSVModel, jwtInterface, emailHelper, encryptHelper)
 
 	userController := handlerUser.NewHandler(userServices, jwtInterface)
+	uploadCSVController := handlerUploadCSV.NewHandler(uploadCSVServices)
 	loggingController := handlerLogging.NewHandler(loggingServices, jwtInterface)
 
 	midGain := middlewareGain.NewMiddleware(jwtInterface, userServices, *config)
@@ -75,6 +82,7 @@ func main() {
 	group := e.Group("/api/v1")
 
 	routes.RouteUser(group, userController, *config, midGain)
+	routes.RouteUploadCSV(group, uploadCSVController, *config, midGain)
 	routes.RouteLogging(group, loggingController, *config)
 
 	// Handle "not found" errors for specific endpoints

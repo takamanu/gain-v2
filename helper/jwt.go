@@ -14,6 +14,7 @@ import (
 
 type JWTInterface interface {
 	GenerateJWT(userID uint, role, status string) map[string]any
+	GenerateUploadJWTToken(hmacSign string) map[string]any
 	GenerateToken(id uint, role, status string) string
 	ExtractToken(token *jwt.Token) map[string]interface{}
 	ValidateToken(token string) (*jwt.Token, error)
@@ -45,6 +46,16 @@ func (j *JWT) GenerateJWT(userID uint, role, status string) map[string]any {
 	result["access_token"] = accessToken
 	result["refresh_token"] = refreshToken
 
+	return result
+}
+
+func (j *JWT) GenerateUploadJWTToken(hmacSign string) map[string]any {
+	var result = map[string]any{}
+	var accessToken = j.GenerateUploadToken(hmacSign)
+	if accessToken == "" {
+		return nil
+	}
+	result["access_token"] = accessToken
 	return result
 }
 
@@ -84,6 +95,22 @@ func (j *JWT) RefreshJWT(accessToken string, refreshToken *jwt.Token) (map[strin
 		return result, nil
 	}
 	return nil, errors.New("Refresh Token Not Valid && Expired")
+}
+
+func (j *JWT) GenerateUploadToken(hmacSign string) string {
+	var claims = jwt.MapClaims{}
+	claims["signToken"] = hmacSign
+	claims["iat"] = time.Now().Unix()
+	claims["exp"] = time.Now().Add(time.Hour * 1).Unix()
+
+	var sign = jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	validToken, err := sign.SignedString([]byte(j.signKey))
+
+	if err != nil {
+		return ""
+	}
+
+	return validToken
 }
 
 func (j *JWT) GenerateToken(id uint, role, status string) string {
